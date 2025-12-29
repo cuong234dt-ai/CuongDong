@@ -375,18 +375,18 @@
             display: none;
         }
         
-        /* Ảnh bay vô hạn */
+        /* ẢNH BAY VÔ HẠN - SỬA Z-INDEX CAO HƠN */
         .trail-image {
             position: fixed;
             width: clamp(80px, 15vw, 140px);
             height: clamp(80px, 15vw, 140px);
             border-radius: 10px;
             object-fit: cover;
-            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
-            z-index: 2;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+            z-index: 9999; /* TĂNG Z-INDEX LÊN CAO NHẤT */
             opacity: 0;
             pointer-events: none;
-            border: 3px solid white;
+            border: 4px solid white;
             transform-origin: center;
         }
         
@@ -764,17 +764,158 @@
 
     <script>
         // ========== BIẾN TOÀN CỤC ==========
-        // ĐÃ CHÈN FILE CỦA BẠN VÀO ĐÂY
+        // SỬA LẠI: Đã điền tên file ảnh và nhạc bạn cung cấp
         let embeddedData = {
+            // Ảnh bìa: Hình đầu tiên (Cô gái làm hình trái tim)
             coverImage: 'z7375234543674_0769929b47084339d45928c31c52d350.jpg',
+            
+            // 4 Ảnh bay: 4 hình còn lại
             floatingImages: [
                 'z7375234544038_606adeee27f6a8e8e2a7577da357310d.jpg',
                 'z7375234544660_4c20ab9defaef0bfe3af5fee43019a17.jpg',
                 'z7375234544296_ea8de8a0eadbeb765f47e440df3f3025.jpg',
                 'z7375234544184_8ef1702527ce214ea29f52c6ee203784.jpg'
             ],
+            
+            // Nhạc
             music: 'happy-birthday-357371.mp3'
         };
+        
+        // ========== TẠO DỮ LIỆU MẪU ==========
+        // Tạo ảnh mặc định cho ảnh bìa
+        function createDefaultCoverImage() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 800;
+            canvas.height = 600;
+            const ctx = canvas.getContext('2d');
+            
+            // Nền gradient hồng
+            const gradient = ctx.createLinearGradient(0, 0, 800, 600);
+            gradient.addColorStop(0, '#ffafbd');
+            gradient.addColorStop(1, '#ffc3a0');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 800, 600);
+            
+            // Vẽ hình trái tim
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 120px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('❤', 400, 250);
+            
+            // Chữ
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 40px Arial';
+            ctx.fillText('Chúc Mừng Sinh Nhật', 400, 350);
+            ctx.font = 'bold 36px Arial';
+            ctx.fillText('Nguyễn My 19 Tuổi', 400, 400);
+            
+            return canvas.toDataURL();
+        }
+        
+        // Tạo ảnh mặc định cho ảnh bay
+        function createDefaultFloatingImage(index) {
+            const colors = ['#ff4e7f', '#ff7ba3', '#ffafbd', '#ffc3a0'];
+            const canvas = document.createElement('canvas');
+            canvas.width = 400;
+            canvas.height = 400;
+            const ctx = canvas.getContext('2d');
+            
+            // Nền tròn màu hồng
+            ctx.fillStyle = colors[index % colors.length];
+            ctx.beginPath();
+            ctx.arc(200, 200, 180, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Chữ số
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 150px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText((index + 1).toString(), 200, 200);
+            
+            return canvas.toDataURL();
+        }
+        
+        // Tạo nhạc mặc định (tone nhạc đơn giản)
+        function createDefaultMusic() {
+            // Tạo một đoạn nhạc đơn giản bằng Web Audio API
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const sampleRate = audioContext.sampleRate;
+            const duration = 2; // 2 giây
+            const numSamples = sampleRate * duration;
+            
+            const buffer = audioContext.createBuffer(1, numSamples, sampleRate);
+            const data = buffer.getChannelData(0);
+            
+            // Tạo melody đơn giản (Happy Birthday)
+            for (let i = 0; i < numSamples; i++) {
+                const t = i / sampleRate;
+                const freq = 440; // A4
+                data[i] = Math.sin(2 * Math.PI * freq * t) * 0.5;
+            }
+            
+            // Chuyển thành DataURL
+            return bufferToWave(buffer, numSamples);
+        }
+        
+        function bufferToWave(buffer, len) {
+            const numOfChan = buffer.numberOfChannels;
+            const length = len * numOfChan * 2 + 44;
+            const bufferArray = new ArrayBuffer(length);
+            const view = new DataView(bufferArray);
+            const channels = [];
+            let sample;
+            let offset = 0;
+            let pos = 0;
+            
+            // write WAVE header
+            setUint32(0x46464952); // "RIFF"
+            setUint32(length - 8); // file length - 8
+            setUint32(0x45564157); // "WAVE"
+            
+            setUint32(0x20746d66); // "fmt " chunk
+            setUint32(16); // length = 16
+            setUint16(1); // PCM (uncompressed)
+            setUint16(numOfChan);
+            setUint32(buffer.sampleRate);
+            setUint32(buffer.sampleRate * 2 * numOfChan); // avg. bytes/sec
+            setUint16(numOfChan * 2); // block-align
+            setUint16(16); // 16-bit (hardcoded in this demo)
+            
+            setUint32(0x61746164); // "data" - chunk
+            setUint32(length - pos - 4); // chunk length
+            
+            // write interleaved data
+            for (let i = 0; i < buffer.numberOfChannels; i++) {
+                channels.push(buffer.getChannelData(i));
+            }
+            
+            while (pos < length) {
+                for (let i = 0; i < numOfChan; i++) {
+                    // interleave channels
+                    sample = Math.max(-1, Math.min(1, channels[i][offset])); // clamp
+                    sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0; // scale to 16-bit signed int
+                    view.setInt16(pos, sample, true); // write 16-bit sample
+                    pos += 2;
+                }
+                offset++; // next source sample
+            }
+            
+            // create Blob
+            const blob = new Blob([bufferArray], { type: 'audio/wav' });
+            return URL.createObjectURL(blob);
+            
+            function setUint16(data) {
+                view.setUint16(pos, data, true);
+                pos += 2;
+            }
+            
+            function setUint32(data) {
+                view.setUint32(pos, data, true);
+                pos += 4;
+            }
+        }
         
         let isMusicLoaded = false;
         let isPlaying = false;
@@ -789,6 +930,57 @@
         const hiddenImageInput = document.getElementById('hiddenImageInput');
         const uploadedImage = document.getElementById('uploadedImage');
         const defaultImage = document.getElementById('defaultImage');
+        
+        // Tự động tạo ảnh mặc định nếu chưa có
+        window.addEventListener('DOMContentLoaded', function() {
+            if (!embeddedData.coverImage) {
+                embeddedData.coverImage = createDefaultCoverImage();
+                uploadedImage.src = embeddedData.coverImage;
+                uploadedImage.style.display = 'block';
+                defaultImage.style.display = 'none';
+            } else {
+                // Nếu đã có ảnh coverImage (như đã điền ở trên), hiển thị luôn
+                uploadedImage.src = embeddedData.coverImage;
+                uploadedImage.style.display = 'block';
+                defaultImage.style.display = 'none';
+            }
+            
+            // Tạo 4 ảnh bay mặc định
+            for (let i = 0; i < 4; i++) {
+                if (!embeddedData.floatingImages[i]) {
+                    embeddedData.floatingImages[i] = createDefaultFloatingImage(i);
+                }
+            }
+            
+            // Tạo nhạc mặc định
+            if (!embeddedData.music) {
+                embeddedData.music = createDefaultMusic();
+            }
+            
+            // Load nhạc
+            const birthdayMusic = document.getElementById('birthdayMusic');
+            birthdayMusic.src = embeddedData.music;
+            birthdayMusic.load();
+            isMusicLoaded = true;
+            document.getElementById('musicPlayer').style.display = 'flex';
+            document.getElementById('musicUploadBtn').classList.add('hidden');
+            
+            // Cập nhật preview ảnh
+            updateImagePreviews();
+            
+            // Tạo tim bay
+            createHearts();
+            
+            // Hiệu ứng tiêu đề
+            const title = document.querySelector('h1');
+            title.style.opacity = '0';
+            title.style.transform = 'translateY(-15px)';
+            setTimeout(() => {
+                title.style.transition = 'opacity 0.8s, transform 0.8s';
+                title.style.opacity = '1';
+                title.style.transform = 'translateY(0)';
+            }, 300);
+        });
         
         imageContainer.addEventListener('click', () => {
             hiddenImageInput.click();
@@ -1023,7 +1215,7 @@
             if (randomIndex < 4 && embeddedData.floatingImages[randomIndex]) {
                 imageSrc = embeddedData.floatingImages[randomIndex];
             } else {
-                // Tạo ảnh mặc định
+                // Tạo ảnh mặc định màu hồng
                 const colors = ['#ff4e7f', '#ff7ba3', '#ffafbd', '#ffc3a0'];
                 const defaultColor = colors[Math.floor(Math.random() * colors.length)];
                 const canvas = document.createElement('canvas');
@@ -1062,12 +1254,12 @@
             // Thời gian bay ngẫu nhiên
             const duration = 4000 + Math.random() * 3000;
             
-            // Animation
+            // Animation - BAY LÊN CAO HƠN
             img.animate([
                 { opacity: 0, transform: 'scale(0.7) rotate(0deg)', bottom: '-200px' },
-                { opacity: 1, transform: 'scale(1) rotate(5deg)', bottom: `${window.innerHeight + 100}px`, offset: 0.1 },
-                { opacity: 0.9, transform: 'scale(1.1) rotate(-5deg)', bottom: `${window.innerHeight * 0.6}px`, offset: 0.5 },
-                { opacity: 0.3, transform: 'scale(0.9) rotate(5deg)', bottom: '100px', offset: 0.8 },
+                { opacity: 1, transform: 'scale(1) rotate(5deg)', bottom: `${window.innerHeight + 300}px`, offset: 0.1 },
+                { opacity: 0.9, transform: 'scale(1.1) rotate(-5deg)', bottom: `${window.innerHeight * 0.8}px`, offset: 0.5 },
+                { opacity: 0.3, transform: 'scale(0.9) rotate(5deg)', bottom: '200px', offset: 0.8 },
                 { opacity: 0, transform: 'scale(0.7) rotate(0deg)', bottom: '-300px' }
             ], {
                 duration: duration,
@@ -1146,38 +1338,6 @@
                 }, 500);
             }, 3000);
         }
-        
-        // ========== KHỞI TẠO ==========
-        window.addEventListener('DOMContentLoaded', () => {
-            createHearts();
-            
-            // Hiệu ứng tiêu đề
-            const title = document.querySelector('h1');
-            title.style.opacity = '0';
-            title.style.transform = 'translateY(-15px)';
-            setTimeout(() => {
-                title.style.transition = 'opacity 0.8s, transform 0.8s';
-                title.style.opacity = '1';
-                title.style.transform = 'translateY(0)';
-            }, 300);
-
-            // LOGIC MỚI: Tự động load ảnh và nhạc từ biến embeddedData
-            if (embeddedData.coverImage) {
-                uploadedImage.src = embeddedData.coverImage;
-                uploadedImage.style.display = 'block';
-                defaultImage.style.display = 'none';
-            }
-            if (embeddedData.music) {
-                birthdayMusic.src = embeddedData.music;
-                isMusicLoaded = true;
-                musicPlayer.style.display = 'flex';
-                musicUploadBtn.classList.add('hidden');
-            }
-            if (embeddedData.floatingImages.some(img => img)) {
-                isImagesAdded = true;
-                updateImagePreviews();
-            }
-        });
     </script>
 </body>
 </html>
